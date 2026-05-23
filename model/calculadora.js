@@ -13,6 +13,10 @@ class Calculadora {
         if (!expr) return 'Error';
 
         try {
+            if (typeof math === 'undefined' || !math.evaluate) {
+                console.error('La biblioteca math.js no está cargada. Verifique su conexión.');
+                return 'Error: Sin math.js';
+            }
             const resultado = math.evaluate(expr);
 
             // Rechazar resultados no numéricos (ej. matrices, unidades complejas)
