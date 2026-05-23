@@ -1,5 +1,20 @@
 {
+  "name": "javascript-calculadora",
+  "version": "1.0.0",
+  "description": "Calculadora científica con modo oscuro/claro, construida con JavaScript vanilla y MVC.",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve . --listen 3000",
+    "dev": "npx serve . --listen 3000",
+    "preview": "npx serve . --listen 8080"
+  },
+  "keywords": ["calculadora", "javascript", "mvc", "mathjs"],
+  "author": "Rafa-x64",
+  "license": "MIT",
   "dependencies": {
     "mathjs": "^14.3.1"
+  },
+  "devDependencies": {
+    "serve": "^14.2.4"
   }
 }

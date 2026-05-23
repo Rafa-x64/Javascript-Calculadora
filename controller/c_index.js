@@ -1,117 +1,160 @@
 import Calculadora from '../model/calculadora.js';
-//event listeners
-document.addEventListener("DOMContentLoaded", () => { 
-    let pantalla = getPantalla();
-    let arr1 = recibir_botones_numericos();
-    let arr2 = recibir_botones_operadores();
-    parsear_botones(arr1, arr2);
-    clickear_botones(arr1, arr2, pantalla);
-});
 
-const modo_oscuro = document.getElementById("modo_oscuro");
-const style_sheet = document.getElementById("style_sheet");
-modo_oscuro.addEventListener("click", () => { 
-    if (style_sheet.getAttribute("href") === "view/css/index.css") {
-        style_sheet.setAttribute("href", "view/css/index_claro.css");
-        alert("cambiando a modo claro");
-    } else { 
-        style_sheet.setAttribute("href", "view/css/index.css");
-        alert("cambiando a modo oscuro");
-    }
-});
+// ── Inicialización ───────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+    const pantalla   = getPantalla();
+    const modoOscuro = document.getElementById('modo_oscuro');
+    const styleSheet = document.getElementById('style_sheet');
 
-//funciones
-function getPantalla() { 
-    let pantalla = document.getElementById("pantalla");
-
-    if (!pantalla) { 
-        alert("pantalla no recibida");
+    if (!pantalla || !modoOscuro || !styleSheet) {
+        console.error('Error crítico: no se encontraron elementos esenciales del DOM.');
         return;
     }
 
-    return pantalla;
+    // Recuperar tema guardado
+    const temaGuardado = localStorage.getItem('tema') || 'claro';
+    aplicarTema(temaGuardado, styleSheet, modoOscuro);
+
+    // Botón de cambio de tema (sin alert)
+    modoOscuro.addEventListener('click', () => {
+        const temaActual = styleSheet.getAttribute('href').includes('index_claro')
+            ? 'claro'
+            : 'oscuro';
+        const nuevoTema = temaActual === 'claro' ? 'oscuro' : 'claro';
+        aplicarTema(nuevoTema, styleSheet, modoOscuro);
+        localStorage.setItem('tema', nuevoTema);
+    });
+
+    // Teclado físico
+    document.addEventListener('keydown', (e) => manejarTecla(e, pantalla));
+
+    // Botones
+    const arr1 = recibir_botones_numericos();
+    const arr2 = recibir_botones_operadores();
+    parsear_botones(arr2);
+    clickear_botones(arr1, arr2, pantalla);
+});
+
+// ── Tema ─────────────────────────────────────────────────────────────────────
+function aplicarTema(tema, styleSheet, circulo) {
+    const esOscuro = tema === 'oscuro';
+    styleSheet.setAttribute(
+        'href',
+        esOscuro ? 'view/css/index.css' : 'view/css/index_claro.css'
+    );
+    circulo.title = esOscuro ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro';
+    circulo.setAttribute('aria-label', circulo.title);
 }
-function recibir_botones_numericos() { 
-    let btn_1 = document.getElementById('btn-1');
-    let btn_2 = document.getElementById('btn-2');
-    let btn_3 = document.getElementById('btn-3');
-    let btn_4 = document.getElementById('btn-4');
-    let btn_5 = document.getElementById('btn-5');
-    let btn_6 = document.getElementById('btn-6');
-    let btn_7 = document.getElementById('btn-7');
-    let btn_8 = document.getElementById('btn-8');
-    let btn_9 = document.getElementById('btn-9');
-    let btn_0 = document.getElementById('btn-0');
 
-    return [btn_0, btn_1, btn_2, btn_3, btn_4, btn_5, btn_6, btn_7, btn_8, btn_9];
+// ── Pantalla ──────────────────────────────────────────────────────────────────
+function getPantalla() {
+    const pantalla = document.getElementById('pantalla');
+    if (!pantalla) {
+        console.error('Elemento #pantalla no encontrado.');
+    }
+    return pantalla || null;
 }
 
-function recibir_botones_operadores() { 
-    let btn_sqrt = document.getElementById('btn-sqrt');
-    let btn_lg = document.getElementById('btn-lg');
-    let btn_ln = document.getElementById('btn-ln');
-    let btn_open_parenthesis = document.getElementById('btn-open-parenthesis');
-    let btn_close_parenthesis = document.getElementById('btn-close-parenthesis');
-    let btn_percent = document.getElementById('btn-percent');
-    let btn_power = document.getElementById('btn-power');
-    let btn_divide = document.getElementById('btn-divide');
-    let btn_multiply = document.getElementById('btn-multiply');
-    let btn_subtract = document.getElementById('btn-subtract');
-    let btn_add = document.getElementById('btn-add');
-    let btn_ac = document.getElementById('btn-ac');
-    let btn_decimal = document.getElementById('btn-decimal');
-    let btn_delete = document.getElementById('btn-delete');
-    let btn_equals = document.getElementById('btn-equals');
+// ── Obtención de botones ──────────────────────────────────────────────────────
+function recibir_botones_numericos() {
+    return ['0','1','2','3','4','5','6','7','8','9']
+        .map(n => document.getElementById(`btn-${n}`))
+        .filter(Boolean);
+}
 
-    return [
-        btn_sqrt, btn_lg, btn_ln, btn_open_parenthesis, btn_close_parenthesis,
-        btn_percent, btn_power, btn_divide, btn_multiply, btn_subtract,
-        btn_add, btn_ac, btn_decimal, btn_delete, btn_equals
+function recibir_botones_operadores() {
+    const ids = [
+        'btn-sqrt', 'btn-lg', 'btn-ln',
+        'btn-open-parenthesis', 'btn-close-parenthesis',
+        'btn-percent', 'btn-power',
+        'btn-divide', 'btn-multiply',
+        'btn-subtract', 'btn-add',
+        'btn-ac', 'btn-decimal', 'btn-delete', 'btn-equals'
     ];
+    return ids.map(id => document.getElementById(id)).filter(Boolean);
 }
 
-function clickear_botones(arr1, arr2, pantalla) {
-    let botones = arr1.concat(arr2);
+// ── Parseo de valores de botones operadores ───────────────────────────────────
+function parsear_botones(arr2) {
+    const valores = [
+        'sqrt(', 'log10(', 'log(',
+        '(', ')',
+        '%', '^',
+        '/', '*',
+        '-', '+',
+        'ac', '.', 'delete', 'equals'
+    ];
+    arr2.forEach((btn, i) => {
+        if (btn && valores[i] !== undefined) {
+            btn.value = valores[i];
+        }
+    });
+}
 
-    botones.forEach(button => {
-        button.addEventListener("click", () => {
-            switch (button.value) { 
-                case "delete":
-                    pantalla.value = pantalla.value.slice(0, -1);
-                    break;
-                case "equals":
-                    let resultado = Calculadora.operacion(pantalla.value);
-                    pantalla.value = "=" + resultado;
-                    break;
-                case "ac":
-                    pantalla.value = "";
-                    break;
-                default: 
-                    let caracter = button.value;
-                    pantalla.value += caracter;
-            }
+// ── Lógica de entrada ─────────────────────────────────────────────────────────
+function procesarEntrada(valor, pantalla) {
+    let contenido = pantalla.value;
+
+    // Si la pantalla muestra un resultado anterior (empieza con "="),
+    // limpiarla antes de continuar (excepto para seguir operando)
+    if (contenido.startsWith('=')) {
+        const prevResultado = contenido.slice(1);
+        const esOperador = ['+','-','*','/','^','%'].includes(valor);
+        contenido = esOperador ? prevResultado : '';
+        pantalla.value = contenido;
+    }
+
+    switch (valor) {
+        case 'delete':
+            pantalla.value = contenido.slice(0, -1);
+            break;
+
+        case 'equals': {
+            if (!contenido.trim()) return; // pantalla vacía → no hacer nada
+            const resultado = Calculadora.operacion(contenido);
+            pantalla.value = `= ${resultado}`;
+            // Desplazar al final para ver el resultado completo
+            pantalla.scrollLeft = pantalla.scrollWidth;
+            break;
+        }
+
+        case 'ac':
+            pantalla.value = '';
+            break;
+
+        default:
+            pantalla.value = contenido + valor;
+            pantalla.scrollLeft = pantalla.scrollWidth;
+    }
+}
+
+// ── Event listeners de botones ────────────────────────────────────────────────
+function clickear_botones(arr1, arr2, pantalla) {
+    [...arr1, ...arr2].forEach(button => {
+        if (!button) return;
+        button.addEventListener('click', () => {
+            procesarEntrada(button.value, pantalla);
         });
     });
 }
 
-function parsear_botones(arr1, arr2) { 
-    for (let i = 0; i < arr1.length; i++) { 
-        let value = arr1[i].value;
-        let resultado = parseInt(value, 10);
+// ── Teclado físico ────────────────────────────────────────────────────────────
+function manejarTecla(e, pantalla) {
+    const mapa = {
+        'Enter'      : 'equals',
+        '='          : 'equals',
+        'Backspace'  : 'delete',
+        'Escape'     : 'ac',
+        'Delete'     : 'ac',
+    };
+
+    const permitidos = new Set('0123456789+-*/.%^()');
+
+    if (mapa[e.key]) {
+        e.preventDefault();
+        procesarEntrada(mapa[e.key], pantalla);
+    } else if (permitidos.has(e.key)) {
+        e.preventDefault();
+        procesarEntrada(e.key, pantalla);
     }
-    arr2[0].value = "sqrt(";
-    arr2[1].value = "log10(";
-    arr2[2].value = "log(";
-    arr2[3].value = "(";
-    arr2[4].value = ")";
-    arr2[5].value = "%";
-    arr2[6].value = "^";
-    arr2[7].value = "/";
-    arr2[8].value = "*"; 
-    arr2[9].value = "-";
-    arr2[10].value = "+";
-    arr2[11].value = "ac";
-    arr2[12].value = ".";
-    arr2[13].value = "delete";
-    arr2[14].value = "equals";
 }
